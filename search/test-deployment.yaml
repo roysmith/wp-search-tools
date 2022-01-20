@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: test-deployment
+          image: docker-registry.tools.wmflabs.org/toolforge-python37-sssd-base:latest
+          command: ["df", "-h"]
+      restartPolicy: Never

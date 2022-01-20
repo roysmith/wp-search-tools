@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: echo
+  namespace: tool-spi-tools-dev
+  labels:
+    toolforge: tool
+spec:
+  template:
+    metadata:
+      labels:
+        toolforge: tool
+    spec:
+      containers:
+      - name: echo
+        image: docker-registry.tools.wmflabs.org/toolforge-python37-sssd-web:latest
+        command: ["ls", "-l", "/data/project/spi-tools-dev/"]
+      restartPolicy: Never
+  backoffLimit: 4

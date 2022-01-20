@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: get-summaries-job
+spec:
+  template:
+    metadata:
+      labels:
+        toolforge: tool
+    spec:
+      containers:
+        - name: get-summaries-template
+          image: docker-registry.tools.wmflabs.org/toolforge-python37-sssd-base:latest
+          env:
+            - name: HOME
+              value: "/data/project/spi-tools-dev"
+          workingDir: /data/project/spi-tools-dev/wp-search-tools/src/search
+          command: ["./go.bash"]
+      restartPolicy: Never
