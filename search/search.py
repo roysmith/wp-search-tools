@@ -23,7 +23,6 @@ def main():
 
     es = OpenSearch(server, http_auth=(user, password))
 
-    #pprint(es.indices.get(index_name))
     query = {
         "query": {
             "bool": {
