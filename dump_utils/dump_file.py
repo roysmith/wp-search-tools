@@ -12,6 +12,7 @@ meta.wikimedia.org/wiki/Data_dumps/Dump_format for details.
 """
 
 import bz2
+import logging
 from xml.dom import pulldom
 
 
@@ -27,11 +28,12 @@ class PagesDumpFile:
 
     def process(self):
         opener = bz2.open if self.path.endswith('.bz2') else open
-        with opener(self.path) as stream:
-            return (doc for doc in self.process_stream(stream))
+        stream = opener(self.path)
+        return self.process_stream(stream)
 
 
     def process_stream(self, stream):
+        logging.debug('process_stream(%s)', stream)
         doc = pulldom.parse(stream)
         for event, node in doc:
             if event == pulldom.START_ELEMENT and node.tagName == 'page':

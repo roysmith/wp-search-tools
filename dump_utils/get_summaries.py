@@ -8,6 +8,8 @@ import json
 import logging
 from xml.dom import pulldom
 
+from dump_file import PagesDumpFile
+
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
@@ -33,43 +35,9 @@ def main():
 
 def process_path(path):
     logging.info('Processing file "%s"', path)
-    if path.endswith('.bz2'):
-        with bz2.open(path) as stream:
-            process_stream(stream)
-    else:
-        with open(path) as stream:
-            process_stream(stream)
-
-
-def process_stream(stream):
-    doc = pulldom.parse(stream)
-    for event, node in doc:
-        if event == pulldom.START_ELEMENT and node.tagName == 'page':
-            doc.expandNode(node)
-
-            for revision in node.getElementsByTagName('revision'):
-                id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
-
-                contributor = revision.getElementsByTagName('contributor')[0]
-                usernames = contributor.getElementsByTagName('username')
-                if usernames:
-                    user_node = usernames[0]
-                else:
-                    user_node = contributor.getElementsByTagName('ip')[0]
-                user = user_node.childNodes[0].nodeValue
-
-                comment_nodes = revision.getElementsByTagName('comment')
-                if comment_nodes:
-                    comment = comment_nodes[0].childNodes[0].nodeValue
-                else:
-                    comment = ''
-
-                #logging.debug('%s: [%s], "%s"', id, user, comment)
-                output_doc = {'rev_id': id,
-                              'user': user,
-                              'comment': comment
-                              }
-                print(json.dumps(output_doc))
+    df = PagesDumpFile(path)
+    for revision in df.process():
+        print(json.dumps(revision))
 
 if __name__ == '__main__':
     main()
