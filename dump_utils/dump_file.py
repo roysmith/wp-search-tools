@@ -54,7 +54,6 @@ class PagesDumpFile:
                     else:
                         comment = ''
 
-                    #logging.debug('%s: [%s], "%s"', id, user, comment)
                     output_doc = {'rev_id': int(id),
                                   'user': user,
                                   'comment': comment
