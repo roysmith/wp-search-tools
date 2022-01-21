@@ -4,10 +4,13 @@ from argparse import ArgumentParser
 import bz2
 from configparser import ConfigParser
 import glob
-import json
 import logging
+import os
+from pathlib import Path
+from pprint import pprint
 from xml.dom import pulldom
 
+from opensearchpy import OpenSearch
 from dump_file import PagesDumpFile
 
 
@@ -18,26 +21,41 @@ def main():
                         help='config file (default %(default)s)')
     parser.add_argument('--file', '-f',
                         help='input file (over-rides config')
+    parser.add_argument('--index', action='store_true',
+                        help='insert documents into elasticsearch')
+
     args = parser.parse_args()
 
     config = ConfigParser()
     config.read(args.config)
+    config.read(Path.home() / '.elasticsearch.ini')
+    config.read(Path(os.environ['SEARCH_TOOLS']) / 'src/elasticsearch.ini')
 
     if args.file:
         logging.info('Processing command-line file "%s"', args.file)
-        process_path(args.file)
+        process_path(args.file, args.index, config)
     else:
         pattern = config.get('dumps', 'path_glob')
         logging.info('Processing directory "%s"', pattern)
         for path in glob.iglob(pattern):
-            process_path(path)
+            process_path(path, args.index, config)
 
 
-def process_path(path):
+def process_path(path, index, config):
+    user = config.get('elasticsearch', 'user')
+    password = config.get('elasticsearch', 'password')
+    server = config.get('elasticsearch', 'server')
+    index_name = config.get('elasticsearch', 'index')
+
+    es = OpenSearch(server, http_auth=(user, password))
+    es.indices.create(index_name, ignore=400)
+
     logging.info('Processing file "%s"', path)
     df = PagesDumpFile(path)
     for revision in df.process():
-        print(json.dumps(revision))
+        logging.info(revision)
+        if index:
+            es.index(index_name, revision)
 
 if __name__ == '__main__':
     main()
