@@ -40,10 +40,19 @@ def main():
 
 
 def process_path(path, config):
+    user = config.get('elasticsearch', 'user')
+    password = config.get('elasticsearch', 'password')
+    server = config.get('elasticsearch', 'server')
+    index_name = config.get('elasticsearch', 'index')
+
+    es = OpenSearch(server, http_auth=(user, password))
+    es.indices.create(index_name, ignore=400)
+
     logging.info('Processing file "%s"', path)
     df = PagesDumpFile(path)
     for revision in df.process():
         logging.info(revision)
+        es.index(index_name, revision)
 
 if __name__ == '__main__':
     main()
