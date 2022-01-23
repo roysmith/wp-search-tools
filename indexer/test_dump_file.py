@@ -3,7 +3,7 @@ from io import StringIO
 from unittest import TestCase
 from unittest.mock import Mock, call, patch, mock_open
 
-from dump_file import PagesDumpFile
+from wp_search_tools.indexer.dump_file import PagesDumpFile
 
 
 class ProgressTest(TestCase):
@@ -40,6 +40,7 @@ class ProgressTest(TestCase):
         data = '''
         <mediawiki>
           <page>
+            <id>1</id>
             <revision>
               <id>999</id>
               <contributor>
@@ -53,22 +54,23 @@ class ProgressTest(TestCase):
         stream = StringIO(data)
         df = PagesDumpFile('')
         docs = list(df.process_stream(stream))
-        self.assertEqual(docs, [{'rev_id': 999, 'user': 'name', 'comment': 'text'}])
+        self.assertEqual(docs, [{'page_id': 1, 'rev_id': 999, 'user': 'name', 'comment': 'text'}])
 
 
     def test_xml_with_multiple_revision_generates_one_item_per_revision(self):
         data = '''
         <mediawiki>
           <page>
+            <id>1</id>
             <revision>
-              <id>1</id>
+              <id>101</id>
               <contributor>
                 <username>name 1</username>
               </contributor>
               <comment>comment 1</comment>
             </revision>
             <revision>
-              <id>2</id>
+              <id>102</id>
               <contributor>
                 <username>name 2</username>
               </contributor>
@@ -76,8 +78,9 @@ class ProgressTest(TestCase):
             </revision>
           </page>
           <page>
+            <id>2</id>
             <revision>
-              <id>3</id>
+              <id>201</id>
               <contributor>
                 <username>name 3</username>
               </contributor>
@@ -89,7 +92,7 @@ class ProgressTest(TestCase):
         stream = StringIO(data)
         df = PagesDumpFile('')
         docs = list(df.process_stream(stream))
-        self.assertEqual(docs, [{'rev_id': 1, 'user': 'name 1', 'comment': 'comment 1'},
-                                {'rev_id': 2, 'user': 'name 2', 'comment': 'comment 2'},
-                                {'rev_id': 3, 'user': 'name 3', 'comment': 'comment 3'},
+        self.assertEqual(docs, [{'page_id': 1, 'rev_id': 101, 'user': 'name 1', 'comment': 'comment 1'},
+                                {'page_id': 1, 'rev_id': 102, 'user': 'name 2', 'comment': 'comment 2'},
+                                {'page_id': 2, 'rev_id': 201, 'user': 'name 3', 'comment': 'comment 3'},
                                 ])

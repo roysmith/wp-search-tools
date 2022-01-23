@@ -25,6 +25,10 @@ from celery import Celery
 from opensearchpy import OpenSearch
 
 from dump_file import PagesDumpFile
+from wp_search_tools.utils.progress import ProgressMonitor
+
+logger = logging.getLogger('wp_search_tools.tasks')
+progress_logger = ProgressMonitor(logger, count=10)
 
 
 config = ConfigParser()
@@ -36,7 +40,19 @@ app = Celery(broker=config.get('celery', 'broker'),
 
 
 @app.task
-def process_path(path):
+def process_path(path, expected_pages):
+    """Ingest a dump file and index each of the revisions.
+
+    path is an absolute path to the dump file.  If the path ends
+    in in .bz2, it is decompressed on the fly.
+
+    expected_pages is the number of pages which are expected to be in
+    the dump file.  This is only used to produce useful log messages
+    about job progress, so an exact count is not essential.
+
+    Returns a dict with status information.
+
+    """
     user = config.get('elasticsearch', 'user')
     password = config.get('elasticsearch', 'password')
     server = config.get('elasticsearch', 'server')
@@ -45,12 +61,22 @@ def process_path(path):
     es = OpenSearch(server, http_auth=(user, password))
     es.indices.create(index_name, ignore=400)
 
-    count = 0
-    logging.info('Processing file "%s"', path)
+    page_count = 0
+    previous_page_id = None
+    revision_count = 0
+
+    logger.info('Processing file "%s"', path)
     df = PagesDumpFile(path)
     for revision in df.process():
-        logging.info(revision)
         es.index(index_name, revision)
-        count += 1
+        revision_count += 1
+        page_id = revision['page_id']
+        if page_id != previous_page_id:
+            page_count += 1
+            previous_page_id = page_id
+        percent = (100.0 * page_count) / expected_pages
+        progress_logger.info('Done with %d of %d (%.0f%%) pages', page_count, expected_pages, percent)
 
-    return count
+    return {'pages': page_count,
+            'revisions': revision_count,
+            }

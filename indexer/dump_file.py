@@ -38,9 +38,11 @@ class PagesDumpFile:
         for event, node in doc:
             if event == pulldom.START_ELEMENT and node.tagName == 'page':
                 doc.expandNode(node)
+                page_node = node
+                page_id = page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue
 
-                for revision in node.getElementsByTagName('revision'):
-                    id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
+                for revision in page_node.getElementsByTagName('revision'):
+                    rev_id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
 
                     contributor = revision.getElementsByTagName('contributor')[0]
                     usernames = contributor.getElementsByTagName('username')
@@ -56,7 +58,8 @@ class PagesDumpFile:
                     else:
                         comment = ''
 
-                    output_doc = {'rev_id': int(id),
+                    output_doc = {'page_id': int(page_id),
+                                  'rev_id': int(rev_id),
                                   'user': user,
                                   'comment': comment
                                   }
