@@ -1,7 +1,7 @@
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
 from time import time
 
-class Progress:
+class ProgressMonitor:
     """Log a subset of messages, based on various criteria.
 
     count: log every n-th message.
