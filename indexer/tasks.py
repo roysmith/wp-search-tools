@@ -61,22 +61,13 @@ def process_path(path, expected_pages):
     es = OpenSearch(server, http_auth=(user, password))
     es.indices.create(index_name, ignore=400)
 
-    page_count = 0
-    previous_page_id = None
-    revision_count = 0
-
     logger.info('Processing file "%s"', path)
     df = PagesDumpFile()
     for revision in df.process(path):
         es.index(index_name, revision)
-        revision_count += 1
-        page_id = revision['page_id']
-        if page_id != previous_page_id:
-            page_count += 1
-            previous_page_id = page_id
-        percent = (100.0 * page_count) / expected_pages
-        progress_logger.info('Done with %d of %d (%.0f%%) pages', page_count, expected_pages, percent)
+        percent = (100.0 * df.pages) / expected_pages
+        progress_logger.info('Done with %d of %d (%.0f%%) pages', df.pages, expected_pages, percent)
 
-    return {'pages': page_count,
-            'revisions': revision_count,
+    return {'pages': df.pages,
+            'revisions': df.revisions,
             }

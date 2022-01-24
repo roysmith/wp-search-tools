@@ -12,6 +12,12 @@ class PagesDumpFileTest(TestCase):
         df = PagesDumpFile()
 
 
+    def test_reports_zero_pages_and_zero_revisions_before_procesing(self):
+        df = PagesDumpFile()
+        self.assertEqual(df.pages, 0)
+        self.assertEqual(df.revisions, 0)
+
+
     def test_builtin_open_is_called_with_normal_path(self):
         m = mock_open()
         with patch('wp_search_tools.indexer.dump_file.open', new=m):
@@ -112,3 +118,45 @@ class PagesDumpFileTest(TestCase):
                                      'rev_id': 201,
                                      'user': 'name 3',
                                      'comment': 'comment 3'}])
+
+
+    def test_page_and_revision_counts_are_reported_correctly(self):
+        data = '''
+        <mediawiki>
+          <page>
+            <id>1</id>
+            <revision>
+              <id>101</id>
+              <contributor>
+                <username>name 1</username>
+              </contributor>
+              <comment>comment 1</comment>
+            </revision>
+            <revision>
+              <id>102</id>
+              <contributor>
+                <username>name 2</username>
+              </contributor>
+              <comment>comment 2</comment>
+            </revision>
+          </page>
+          <page>
+            <id>2</id>
+            <revision>
+              <id>201</id>
+              <contributor>
+                <username>name 3</username>
+              </contributor>
+              <comment>comment 3</comment>
+            </revision>
+          </page>
+        </mediawiki>
+        '''
+        m = mock_open()
+        with patch('wp_search_tools.indexer.dump_file.open', new=m):
+            m.return_value = StringIO(data)
+            df = PagesDumpFile()
+            list(df.process('xxx'))
+            m.assert_called_once_with('xxx')
+            self.assertEqual(df.pages, 2)
+            self.assertEqual(df.revisions, 3)

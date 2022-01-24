@@ -18,6 +18,11 @@ from xml.dom import pulldom
 
 class PagesDumpFile:
 
+    def __init__(self):
+        self.pages = 0
+        self.revisions = 0
+
+
     def process(self, path):
         """Path is the file to be parsed.  If it ends in '.bz2', it is
         decompressed on the fly.
@@ -31,9 +36,11 @@ class PagesDumpFile:
                 if event == pulldom.START_ELEMENT and node.tagName == 'page':
                     doc.expandNode(node)
                     page_node = node
+                    self.pages += 1
                     page_id = page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue
 
                     for revision in page_node.getElementsByTagName('revision'):
+                        self.revisions += 1
                         rev_id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
 
                         contributor = revision.getElementsByTagName('contributor')[0]
