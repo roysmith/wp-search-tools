@@ -66,8 +66,8 @@ def process_path(path, expected_pages):
     revision_count = 0
 
     logger.info('Processing file "%s"', path)
-    df = PagesDumpFile(path)
-    for revision in df.process():
+    df = PagesDumpFile()
+    for revision in df.process(path):
         es.index(index_name, revision)
         revision_count += 1
         page_id = revision['page_id']

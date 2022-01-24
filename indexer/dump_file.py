@@ -18,49 +18,41 @@ from xml.dom import pulldom
 
 class PagesDumpFile:
 
-    def __init__(self, path):
+    def process(self, path):
         """Path is the file to be parsed.  If it ends in '.bz2', it is
         decompressed on the fly.
 
         """
-        self.path = path
+        logging.debug('process(%s)', path)
+        opener = bz2.open if path.endswith('.bz2') else open
+        with opener(path) as stream:
+            doc = pulldom.parse(stream)
+            for event, node in doc:
+                if event == pulldom.START_ELEMENT and node.tagName == 'page':
+                    doc.expandNode(node)
+                    page_node = node
+                    page_id = page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue
 
+                    for revision in page_node.getElementsByTagName('revision'):
+                        rev_id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
 
-    def process(self):
-        opener = bz2.open if self.path.endswith('.bz2') else open
-        stream = opener(self.path)
-        return self.process_stream(stream)
+                        contributor = revision.getElementsByTagName('contributor')[0]
+                        usernames = contributor.getElementsByTagName('username')
+                        if usernames:
+                            user_node = usernames[0]
+                        else:
+                            user_node = contributor.getElementsByTagName('ip')[0]
+                        user = user_node.childNodes[0].nodeValue
 
+                        comment_nodes = revision.getElementsByTagName('comment')
+                        if comment_nodes:
+                            comment = comment_nodes[0].childNodes[0].nodeValue
+                        else:
+                            comment = ''
 
-    def process_stream(self, stream):
-        logging.debug('process_stream(%s)', stream)
-        doc = pulldom.parse(stream)
-        for event, node in doc:
-            if event == pulldom.START_ELEMENT and node.tagName == 'page':
-                doc.expandNode(node)
-                page_node = node
-                page_id = page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue
-
-                for revision in page_node.getElementsByTagName('revision'):
-                    rev_id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
-
-                    contributor = revision.getElementsByTagName('contributor')[0]
-                    usernames = contributor.getElementsByTagName('username')
-                    if usernames:
-                        user_node = usernames[0]
-                    else:
-                        user_node = contributor.getElementsByTagName('ip')[0]
-                    user = user_node.childNodes[0].nodeValue
-
-                    comment_nodes = revision.getElementsByTagName('comment')
-                    if comment_nodes:
-                        comment = comment_nodes[0].childNodes[0].nodeValue
-                    else:
-                        comment = ''
-
-                    output_doc = {'page_id': int(page_id),
-                                  'rev_id': int(rev_id),
-                                  'user': user,
-                                  'comment': comment
-                                  }
-                    yield output_doc
+                        output_doc = {'page_id': int(page_id),
+                                      'rev_id': int(rev_id),
+                                      'user': user,
+                                      'comment': comment
+                                      }
+                        yield output_doc
