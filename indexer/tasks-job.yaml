@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: indexer-tasks-job
+spec:
+  template:
+    metadata:
+      labels:
+        toolforge: tool
+    spec:
+      containers:
+        - name: indexer-tasks-template
+          image: docker-registry.tools.wmflabs.org/toolforge-python37-sssd-base:latest
+          env:
+            - name: HOME
+              value: "/data/project/spi-tools-dev"
+            - name: PYTHONPATH
+              value: "/data/project/spi-tools-dev/wp-search-tools"
+            - name: SEARCH_TOOLS
+              value: /data/project/spi-tools-dev/wp-search-tools
+          workingDir: /data/project/spi-tools-dev/wp-search-tools/wp_search_tools/indexer
+          command: ["/data/project/spi-tools-dev/wp-search-tools/venv/bin/celery", "-A", "tasks", "worker", "--loglevel=INFO"]
+
+      restartPolicy: Never
