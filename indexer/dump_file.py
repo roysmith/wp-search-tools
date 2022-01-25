@@ -15,6 +15,7 @@ import bz2
 import logging
 from xml.dom import pulldom
 
+logger = logging.getLogger('wp_search_tools.tasks')
 
 class PagesDumpFile:
 
@@ -28,7 +29,7 @@ class PagesDumpFile:
         decompressed on the fly.
 
         """
-        logging.debug('process(%s)', path)
+        logger.debug('process(%s)', path)
         opener = bz2.open if path.endswith('.bz2') else open
         with opener(path) as stream:
             doc = pulldom.parse(stream)
