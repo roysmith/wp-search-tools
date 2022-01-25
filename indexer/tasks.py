@@ -22,6 +22,7 @@ import os
 from pathlib import Path
 
 from celery import Celery
+from celery.signals import after_setup_logger
 from opensearchpy import OpenSearch
 
 from dump_file import PagesDumpFile
@@ -38,17 +39,33 @@ config.read(Path(os.environ['SEARCH_TOOLS']) / 'wp_search_tools/indexer/config.i
 app = Celery(broker=config.get('celery', 'broker'),
              backend=config.get('celery', 'backend'))
 
+@after_setup_logger.connect
+def setup_loggers(logger, format, **kwargs):
+    logdir = Path(os.environ['SEARCH_TOOLS']) / 'logs'
+    logfile = logdir / 'celery.log'
+    logdir.mkdir(exist_ok=True)
+    formatter = logging.Formatter(format)
+    handler = logging.handlers.TimedRotatingFileHandler(logfile,
+                                                        when='midnight',
+                                                        utc=True,
+                                                        backupCount=10)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
 
 @app.task
-def process_path(path, expected_pages):
-    """Ingest a dump file and index each of the revisions.
+def process_path(path, expected_pages, dry_run=False):
+    """Ingest a dump file and (optionally) index each of the revisions.
 
     path is an absolute path to the dump file.  If the path ends
     in in .bz2, it is decompressed on the fly.
 
-    expected_pages is the number of pages which are expected to be in
-    the dump file.  This is only used to produce useful log messages
-    about job progress, so an exact count is not essential.
+    expected_pages is a rough estimate of the number of pages which
+    are expected to be in the dump file.  This is only used to produce
+    log messages about job progress, so an exact count is not immportant.
+
+    If dry_run is true, the dump file is parsed as normal, but
+    revisions are not uploaded to elasticsearch,
 
     Returns a dict with status information.
 
@@ -64,7 +81,8 @@ def process_path(path, expected_pages):
     logger.info('Processing file "%s"', path)
     df = PagesDumpFile()
     for revision in df.process(path):
-        es.index(index_name, revision)
+        if not dry_run:
+            es.index(index_name, revision)
         percent = (100.0 * df.pages) / expected_pages
         progress_logger.info('Done with %d of %d (%.0f%%) pages', df.pages, expected_pages, percent)
 
