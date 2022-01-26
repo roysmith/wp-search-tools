@@ -48,43 +48,43 @@ class PagesDumpFile:
         opener = bz2.open if path.endswith('.bz2') else open
         with opener(path) as stream:
             doc = pulldom.parse(stream)
+            state = ''
             for event, node in doc:
-                if event == pulldom.START_ELEMENT and node.tagName == 'page':
-                    doc.expandNode(node)
-                    self.pages += 1
-                    try:
-                        page_id = int(node.getElementsByTagName('id')[0].childNodes[0].nodeValue)
-                    except IndexError as ex:
-                        logger.exception('Could not find page id (page count = %d): %s', self.pages, ex)
+                if event == pulldom.START_ELEMENT:
+                    if node.tagName == 'page':
+                        state = 'page'
+                        self.pages += 1
+                        page_id = None
                         continue
+                    elif state == 'page' and node.tagName == 'id':
+                        doc.expandNode(node)
+                        page_id = int(node.childNodes[0].nodeValue)
+                        continue
+                    elif state == 'page' and node.tagName == 'revision':
+                        state = 'revision'
+                        self.revisions += 1
+                        doc.expandNode(node)
+                        rev_id = int(node.getElementsByTagName('id')[0].childNodes[0].nodeValue)
 
-                    for revision in node.getElementsByTagName('revision'):
-                        try:
-                            self.revisions += 1
-                            rev_id = None
-                            rev_id = int(revision.getElementsByTagName('id')[0].childNodes[0].nodeValue)
+                        contributor = node.getElementsByTagName('contributor')[0]
+                        usernames = contributor.getElementsByTagName('username')
+                        if usernames:
+                            user_node = usernames[0]
+                        else:
+                            user_node = contributor.getElementsByTagName('ip')[0]
+                        user = user_node.childNodes[0].nodeValue
 
-                            contributor = revision.getElementsByTagName('contributor')[0]
-                            usernames = contributor.getElementsByTagName('username')
-                            if usernames:
-                                user_node = usernames[0]
+                        comment_nodes = node.getElementsByTagName('comment')
+                        if comment_nodes:
+                            comment_node = comment_nodes[0]
+                            if comment_node.hasAttribute('deleted'):
+                                comment = None
                             else:
-                                user_node = contributor.getElementsByTagName('ip')[0]
-                            user = user_node.childNodes[0].nodeValue
+                                child = comment_node.firstChild
+                                comment = (child and child.nodeValue) or ''
+                        else:
+                            comment = ''
 
-                            comment_nodes = revision.getElementsByTagName('comment')
-                            if comment_nodes:
-                                comment_node = comment_nodes[0]
-                                if comment_node.hasAttribute('deleted'):
-                                    comment = None
-                                else:
-                                    child = comment_node.firstChild
-                                    comment = (child and child.nodeValue) or ''
-                            else:
-                                comment = ''
-
-                            yield RevisionData(page_id, rev_id, user, comment)
-
-                        except IndexError as ex:
-                            logger.exception('Could not parse revision in page %s (rev_id %s): %s', page_id, rev_id, ex)
-                    del node
+                        state = 'page'
+                        yield RevisionData(page_id, rev_id, user, comment)
+                        continue

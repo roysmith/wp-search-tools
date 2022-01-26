@@ -151,43 +151,6 @@ class PagesDumpFileTest(TestCase):
             self.assertEqual(df.revisions, 3)
 
 
-    def test_page_with_no_id_logs_exception(self):
-        data = '''
-        <mediawiki>
-          <page>
-          </page>
-        </mediawiki>
-        '''
-        m = mock_open()
-        with patch('wp_search_tools.indexer.dump_file.open', new=m):
-            m.return_value = StringIO(data)
-            df = PagesDumpFile()
-            with self.assertLogs('wp_search_tools.tasks', 'ERROR') as cm:
-                docs = list(df.process('xxx'))
-            m.assert_called_once_with('xxx')
-            self.assertIn('Could not find page id', cm.output[0])
-
-
-    def test_revision_with_no_id_logs_exception(self):
-        data = '''
-        <mediawiki>
-          <page>
-            <id>1</id>
-            <revision>
-            </revision>
-          </page>
-        </mediawiki>
-        '''
-        m = mock_open()
-        with patch('wp_search_tools.indexer.dump_file.open', new=m):
-            m.return_value = StringIO(data)
-            df = PagesDumpFile()
-            with self.assertLogs('wp_search_tools.tasks', 'ERROR') as cm:
-                docs = list(df.process('xxx'))
-                m.assert_called_once_with('xxx')
-                self.assertIn('Could not parse revision', cm.output[0])
-
-
     def test_empty_comment_generates_empty_comment_string(self):
         data = '''
         <mediawiki>
