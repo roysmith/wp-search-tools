@@ -12,10 +12,23 @@ meta.wikimedia.org/wiki/Data_dumps/Dump_format for details.
 """
 
 import bz2
+from dataclasses import dataclass
 import logging
 from xml.dom import pulldom
 
 logger = logging.getLogger('wp_search_tools.tasks')
+
+@dataclass(frozen=True)
+class RevisionData:
+    """A deleted comment is represented as None.  A revision which simply
+    has no comment will have comment set to the empty string.
+
+    """
+    page_id: int
+    rev_id: int
+    user: str
+    comment: str
+
 
 class PagesDumpFile:
 
@@ -28,6 +41,8 @@ class PagesDumpFile:
         """Path is the file to be parsed.  If it ends in '.bz2', it is
         decompressed on the fly.
 
+        Returns an iterator over RevisionData objects.
+
         """
         logger.debug('process(%s)', path)
         opener = bz2.open if path.endswith('.bz2') else open
@@ -39,7 +54,7 @@ class PagesDumpFile:
                     page_node = node
                     self.pages += 1
                     try:
-                        page_id = page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue
+                        page_id = int(page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue)
                     except IndexError as ex:
                         logger.exception('Could not find page id (page count = %d): %s', self.pages, ex)
                         continue
@@ -48,7 +63,7 @@ class PagesDumpFile:
                         try:
                             self.revisions += 1
                             rev_id = None
-                            rev_id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
+                            rev_id = int(revision.getElementsByTagName('id')[0].childNodes[0].nodeValue)
 
                             contributor = revision.getElementsByTagName('contributor')[0]
                             usernames = contributor.getElementsByTagName('username')
@@ -60,14 +75,16 @@ class PagesDumpFile:
 
                             comment_nodes = revision.getElementsByTagName('comment')
                             if comment_nodes:
-                                comment = comment_nodes[0].childNodes[0].nodeValue
+                                comment_node = comment_nodes[0]
+                                if comment_node.hasAttribute('deleted'):
+                                    comment = None
+                                else:
+                                    child = comment_node.firstChild
+                                    comment = (child and child.nodeValue) or ''
                             else:
                                 comment = ''
 
-                            yield {'page_id': int(page_id),
-                                   'rev_id': int(rev_id),
-                                   'user': user,
-                                   'comment': comment
-                            }
+                            yield RevisionData(page_id, rev_id, user, comment)
+
                         except IndexError as ex:
                             logger.exception('Could not parse revision in page %s (rev_id %s): %s', page_id, rev_id, ex)

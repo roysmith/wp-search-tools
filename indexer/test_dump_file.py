@@ -4,7 +4,7 @@ from pprint import pprint
 from unittest import TestCase
 from unittest.mock import Mock, call, patch, mock_open
 
-from wp_search_tools.indexer.dump_file import PagesDumpFile
+from wp_search_tools.indexer.dump_file import PagesDumpFile, RevisionData
 
 
 class PagesDumpFileTest(TestCase):
@@ -63,10 +63,7 @@ class PagesDumpFileTest(TestCase):
             df = PagesDumpFile()
             docs = list(df.process('xxx'))
             m.assert_called_once_with('xxx')
-            self.assertEqual(docs, [{'page_id': 1,
-                                     'rev_id': 999,
-                                     'user': 'name',
-                                     'comment': 'text'}])
+            self.assertEqual(docs, [RevisionData(1, 999, 'name', 'text')])
 
 
     def test_xml_with_multiple_revision_generates_one_item_per_revision(self):
@@ -107,18 +104,9 @@ class PagesDumpFileTest(TestCase):
             df = PagesDumpFile()
             docs = list(df.process('xxx'))
             m.assert_called_once_with('xxx')
-            self.assertEqual(docs, [{'page_id': 1,
-                                     'rev_id': 101,
-                                     'user': 'name 1',
-                                     'comment': 'comment 1'},
-                                    {'page_id': 1,
-                                     'rev_id': 102,
-                                     'user': 'name 2',
-                                     'comment': 'comment 2'},
-                                    {'page_id': 2,
-                                     'rev_id': 201,
-                                     'user': 'name 3',
-                                     'comment': 'comment 3'}])
+            self.assertEqual(docs, [RevisionData(1, 101, 'name 1', 'comment 1'),
+                                    RevisionData(1, 102, 'name 2', 'comment 2'),
+                                    RevisionData(2, 201, 'name 3', 'comment 3')])
 
 
     def test_page_and_revision_counts_are_reported_correctly(self):
@@ -198,3 +186,74 @@ class PagesDumpFileTest(TestCase):
                 docs = list(df.process('xxx'))
                 m.assert_called_once_with('xxx')
                 self.assertIn('Could not parse revision', cm.output[0])
+
+
+    def test_empty_comment_generates_empty_comment_string(self):
+        data = '''
+        <mediawiki>
+          <page>
+            <id>1</id>
+            <revision>
+              <id>999</id>
+              <contributor>
+                <username>name</username>
+              </contributor>
+              <comment></comment>
+            </revision>
+          </page>
+        </mediawiki>
+        '''
+        m = mock_open()
+        with patch('wp_search_tools.indexer.dump_file.open', new=m):
+            m.return_value = StringIO(data)
+            df = PagesDumpFile()
+            docs = list(df.process('xxx'))
+            m.assert_called_once_with('xxx')
+            self.assertEqual(docs, [RevisionData(1, 999, 'name', '')])
+
+
+    def test_missing_comment_generates_empty_comment_string(self):
+        data = '''
+        <mediawiki>
+          <page>
+            <id>1</id>
+            <revision>
+              <id>999</id>
+              <contributor>
+                <username>name</username>
+              </contributor>
+            </revision>
+          </page>
+        </mediawiki>
+        '''
+        m = mock_open()
+        with patch('wp_search_tools.indexer.dump_file.open', new=m):
+            m.return_value = StringIO(data)
+            df = PagesDumpFile()
+            docs = list(df.process('xxx'))
+            m.assert_called_once_with('xxx')
+            self.assertEqual(docs, [RevisionData(1, 999, 'name', '')])
+
+
+    def test_deleted_comment_generates_none(self):
+        data = '''
+        <mediawiki>
+          <page>
+            <id>1</id>
+            <revision>
+              <id>999</id>
+              <contributor>
+                <username>name</username>
+              </contributor>
+              <comment deleted="deleted"/>
+            </revision>
+          </page>
+        </mediawiki>
+        '''
+        m = mock_open()
+        with patch('wp_search_tools.indexer.dump_file.open', new=m):
+            m.return_value = StringIO(data)
+            df = PagesDumpFile()
+            docs = list(df.process('xxx'))
+            m.assert_called_once_with('xxx')
+            self.assertEqual(docs, [RevisionData(1, 999, 'name', None)])
