@@ -51,15 +51,14 @@ class PagesDumpFile:
             for event, node in doc:
                 if event == pulldom.START_ELEMENT and node.tagName == 'page':
                     doc.expandNode(node)
-                    page_node = node
                     self.pages += 1
                     try:
-                        page_id = int(page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue)
+                        page_id = int(node.getElementsByTagName('id')[0].childNodes[0].nodeValue)
                     except IndexError as ex:
                         logger.exception('Could not find page id (page count = %d): %s', self.pages, ex)
                         continue
 
-                    for revision in page_node.getElementsByTagName('revision'):
+                    for revision in node.getElementsByTagName('revision'):
                         try:
                             self.revisions += 1
                             rev_id = None
@@ -88,3 +87,4 @@ class PagesDumpFile:
 
                         except IndexError as ex:
                             logger.exception('Could not parse revision in page %s (rev_id %s): %s', page_id, rev_id, ex)
+                    del node
