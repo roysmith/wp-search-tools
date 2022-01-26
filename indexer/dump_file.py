@@ -38,29 +38,36 @@ class PagesDumpFile:
                     doc.expandNode(node)
                     page_node = node
                     self.pages += 1
-                    page_id = page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue
+                    try:
+                        page_id = page_node.getElementsByTagName('id')[0].childNodes[0].nodeValue
+                    except IndexError as ex:
+                        logger.exception('Could not find page id (page count = %d): %s', self.pages, ex)
+                        continue
 
                     for revision in page_node.getElementsByTagName('revision'):
-                        self.revisions += 1
-                        rev_id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
+                        try:
+                            self.revisions += 1
+                            rev_id = None
+                            rev_id = revision.getElementsByTagName('id')[0].childNodes[0].nodeValue
 
-                        contributor = revision.getElementsByTagName('contributor')[0]
-                        usernames = contributor.getElementsByTagName('username')
-                        if usernames:
-                            user_node = usernames[0]
-                        else:
-                            user_node = contributor.getElementsByTagName('ip')[0]
-                        user = user_node.childNodes[0].nodeValue
+                            contributor = revision.getElementsByTagName('contributor')[0]
+                            usernames = contributor.getElementsByTagName('username')
+                            if usernames:
+                                user_node = usernames[0]
+                            else:
+                                user_node = contributor.getElementsByTagName('ip')[0]
+                            user = user_node.childNodes[0].nodeValue
 
-                        comment_nodes = revision.getElementsByTagName('comment')
-                        if comment_nodes:
-                            comment = comment_nodes[0].childNodes[0].nodeValue
-                        else:
-                            comment = ''
+                            comment_nodes = revision.getElementsByTagName('comment')
+                            if comment_nodes:
+                                comment = comment_nodes[0].childNodes[0].nodeValue
+                            else:
+                                comment = ''
 
-                        output_doc = {'page_id': int(page_id),
-                                      'rev_id': int(rev_id),
-                                      'user': user,
-                                      'comment': comment
-                                      }
-                        yield output_doc
+                            yield {'page_id': int(page_id),
+                                   'rev_id': int(rev_id),
+                                   'user': user,
+                                   'comment': comment
+                            }
+                        except IndexError as ex:
+                            logger.exception('Could not parse revision in page %s (rev_id %s): %s', page_id, rev_id, ex)
