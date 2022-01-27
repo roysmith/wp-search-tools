@@ -12,13 +12,13 @@ meta.wikimedia.org/wiki/Data_dumps/Dump_format for details.
 """
 
 import bz2
-from dataclasses import dataclass
+import dataclasses
 import logging
 from xml.dom import pulldom
 
 logger = logging.getLogger('wp_search_tools.tasks')
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True)
 class RevisionData:
     """A deleted comment is represented as None.  A revision which simply
     has no comment will have comment set to the empty string.
@@ -29,12 +29,18 @@ class RevisionData:
     user: str
     comment: str
 
+    def asdict(self):
+        return dataclasses.asdict(self)
+
 
 class PagesDumpFile:
 
     def __init__(self):
         self.pages = 0
         self.revisions = 0
+
+    def asdict(self):
+        return asdict(self)
 
 
     def process(self, path):

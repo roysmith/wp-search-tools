@@ -82,7 +82,7 @@ def process_path(path, expected_pages, dry_run=False):
     df = PagesDumpFile()
     for revision in df.process(path):
         if not dry_run:
-            es.index(index_name, revision)
+            es.index(index_name, revision.asdict())
         percent = (100.0 * df.pages) / expected_pages
         progress_logger.info('Done with %d of %d (%.0f%%) pages', df.pages, expected_pages, percent)
 
