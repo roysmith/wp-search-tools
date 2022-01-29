@@ -65,7 +65,7 @@ def get_configs():
     """
     yield Path.home() / '.elasticsearch.ini'
     if 'SEARCH_TOOLS' in os.environ:
-        yield Path(os.environ['SEARCH_TOOLS']) / 'src/elasticsearch.ini'
+        yield Path(os.environ['SEARCH_TOOLS']) / 'wp_search_tools/elasticsearch.ini'
     yield Path('elasticsearch.ini')
 
 
